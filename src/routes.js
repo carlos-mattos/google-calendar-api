@@ -1,11 +1,10 @@
 import express from "express";
 import { CreateCalendarEvent } from "./applications/GoogleCalendar/CreateCalendarEvent.js";
 import { oauth2Client, calendar } from "./config/GoogleCalendar.js";
-import fs from "node:fs";
 
 const router = express.Router();
 
-router.post("/calendar", async (req, res) => {
+router.post("/schedule", async (req, res) => {
   const createCalendarEvent = new CreateCalendarEvent(calendar, oauth2Client);
   createCalendarEvent.execute(req, res);
 });
