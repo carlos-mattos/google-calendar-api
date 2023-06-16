@@ -1,38 +1,81 @@
-import { dateTimeForCalendar } from "../../utils/dateTimeForCalendar.js";
+import dayjs from "dayjs";
+import { randomUUID } from "node:crypto";
 
 export class CreateCalendarEvent {
-  constructor(CALENDAR_ID, calendar, timeZone) {
-    this.CALENDAR_ID = CALENDAR_ID;
+  TIMEZONE = "America/Sao_Paulo";
+
+  constructor(calendar, oauth2Client) {
     this.calendar = calendar;
-    this.timeZone = timeZone;
+    this.oauth2Client = oauth2Client;
   }
 
   async execute(req, res) {
     try {
-      const body = req.body;
+      const { summary, description } = req.body;
 
-      const { start, end } = dateTimeForCalendar({
-        endDate: body.end.date,
-        endDateTime: body.end.time,
-        startDate: body.start.date,
-        startDateTime: body.start.time,
-      });
+      if (!summary || !description)
+        return res.status(400).json({ message: "Dados inválidos" });
 
-      const response = await this.calendar.events.insert({
-        calendarId: this.CALENDAR_ID,
-        resource: {
-          summary: body.summary,
-          description: body.description,
+      let resource = {
+        summary,
+        description,
+        conferenceData: {
+          createRequest: {
+            requestId: randomUUID(),
+          },
+        },
+      };
+
+      if (req.body.start && req.body.end) {
+        const { start, end } = req.body;
+
+        const [startDay, startMonth, startYear] = start.date
+          .split("/")
+          .map((num) => parseInt(num, 10));
+        const [startHour, startMinute] = start.time
+          .split(":")
+          .map((num) => parseInt(num, 10));
+        const [endDay, endMonth, endYear] = end.date
+          .split("/")
+          .map((num) => parseInt(num, 10));
+        const [endHour, endMinute] = end.time
+          .split(":")
+          .map((num) => parseInt(num, 10));
+
+        resource = {
+          ...resource,
           start: {
-            dateTime: start,
-            timeZone: this.timeZone,
+            dateTime: dayjs()
+              .year(startYear)
+              .month(startMonth - 1)
+              .date(startDay)
+              .hour(startHour)
+              .minute(startMinute)
+              .toISOString(),
+            timeZone: this.TIMEZONE,
           },
           end: {
-            dateTime: end,
-            timeZone: this.timeZone,
+            dateTime: dayjs()
+              .year(endYear)
+              .month(endMonth - 1)
+              .date(endDay)
+              .hour(endHour)
+              .minute(endMinute)
+              .toISOString(),
+            timeZone: this.TIMEZONE,
           },
-          attendees: body.attendees,
-        },
+        };
+      }
+
+      if (req.body.attendees) {
+        resource = { ...resource, attendees: req.body.attendees };
+      }
+
+      await this.calendar.events.insert({
+        calendarId: "primary",
+        auth: this.oauth2Client,
+        requestBody: resource,
+        conferenceDataVersion: 1,
       });
 
       return res.status(200).json({ message: "Evento criado com sucesso" });
