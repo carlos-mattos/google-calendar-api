@@ -1,5 +1,6 @@
 import dayjs from "dayjs";
 import { randomUUID } from "node:crypto";
+import logger from "../../config/Logger.js";
 
 export class CreateCalendarEvent {
   TIMEZONE = "America/Sao_Paulo";
@@ -26,49 +27,43 @@ export class CreateCalendarEvent {
         },
       };
 
-      if (req.body.start && req.body.end) {
-        const { start, end } = req.body;
+      if (req.body.start && req.body.duration) {
+        const { start, duration } = req.body;
 
-        const [startDay, startMonth, startYear] = start.date
-          .split("/")
+        const [date, time] = start.split(" ");
+        const [startDay, startMonth, startYear] = date
+          .split("-")
           .map((num) => parseInt(num, 10));
-        const [startHour, startMinute] = start.time
+        const [startHour, startMinute] = time
           .split(":")
           .map((num) => parseInt(num, 10));
-        const [endDay, endMonth, endYear] = end.date
-          .split("/")
-          .map((num) => parseInt(num, 10));
-        const [endHour, endMinute] = end.time
-          .split(":")
-          .map((num) => parseInt(num, 10));
+
+        const startDateTime = dayjs()
+          .year(startYear)
+          .month(startMonth - 1)
+          .date(startDay)
+          .hour(startHour)
+          .minute(startMinute);
 
         resource = {
           ...resource,
           start: {
-            dateTime: dayjs()
-              .year(startYear)
-              .month(startMonth - 1)
-              .date(startDay)
-              .hour(startHour)
-              .minute(startMinute)
-              .toISOString(),
+            dateTime: startDateTime.toISOString(),
             timeZone: this.TIMEZONE,
           },
           end: {
-            dateTime: dayjs()
-              .year(endYear)
-              .month(endMonth - 1)
-              .date(endDay)
-              .hour(endHour)
-              .minute(endMinute)
-              .toISOString(),
+            dateTime: dayjs(startDateTime).add(duration, "hour").toISOString(),
             timeZone: this.TIMEZONE,
           },
         };
       }
 
       if (req.body.attendees) {
-        resource = { ...resource, attendees: req.body.attendees };
+        const attendees = req.body.attendees.split(",").map((email) => ({
+          email: email.trim(),
+        }));
+
+        resource = { ...resource, attendees: attendees };
       }
 
       await this.calendar.events.insert({
@@ -78,9 +73,13 @@ export class CreateCalendarEvent {
         conferenceDataVersion: 1,
       });
 
-      return res.status(200).json({ message: "Evento criado com sucesso" });
+      logger.info("Evento criado com sucesso", resource.summary);
+
+      return res
+        .status(200)
+        .json({ message: "Evento criado com sucesso", resource });
     } catch (error) {
-      console.error(error);
+      logger.error("Erro ao criar evento", error.toString());
 
       return res.status(500).json({ message: "Erro ao criar evento" });
     }

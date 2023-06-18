@@ -1,6 +1,7 @@
 import express from "express";
 import { CreateCalendarEvent } from "./applications/GoogleCalendar/CreateCalendarEvent.js";
 import { oauth2Client, calendar } from "./config/GoogleCalendar.js";
+import logger from "./config/Logger.js";
 
 const router = express.Router();
 
@@ -21,6 +22,8 @@ router.get("/login", async (req, res) => {
     login_hint: "coding.devzone@gmail.com",
   });
 
+  logger.info("Redirecting");
+
   return res.redirect(url);
 });
 
@@ -34,6 +37,8 @@ router.get("/google/redirect", async (req, res) => {
 
   const { tokens } = await oauth2Client.getToken(code);
   oauth2Client.setCredentials(tokens);
+
+  logger.info("Authenticating with code");
 
   return res.send("Authenticated! API is running...");
 });
