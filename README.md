@@ -5,18 +5,8 @@
 ```json
 {
   "summary": "test",
-  "description": "This is the description."
-  "start": {
-     "date": "16/06/2023",
-     "time": "17:00"
-  },
-   "end": {
-     "date": "16/06/2023",
-     "time": "18:30"
-   },
-   "attendees": [ // optional field 
-     {
-       "email": "exemplo@gmail.com"
-     }
-   ]
+  "description": "This is the description.",
+  "start": "20-06-2023 14:00",
+  "duration": 1,
+  "attendees": "exemplo1@gmail.com, exemplo2@gmail.com"
 }
